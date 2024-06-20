@@ -65,10 +65,6 @@ const (
 
 )
 
-type RetryClientInterface interface {
-	Push(pushData []byte) *RabbitMqError
-	Ack() error
-}
 
 type amqpConfig struct {
 	host       string //rabbitmq主机
@@ -111,6 +107,11 @@ func NewAmqpConf(host string, port int, user string, password string, opts ...fu
 	return cnf
 }
 
+type RetryClientInterface interface {
+	Push(pushData []byte) *RabbitMqError
+	Ack() error
+}
+
 /*
 重试工具
 */
@@ -142,54 +143,6 @@ func (r *retryClient) Ack() error {
 }
 
 // ! 超出尝试次数的放入死信队列
-// func (r *retryClient) Push(pushData []byte) *RabbitMqError {
-// 	if r.channel != nil {
-// 		var retryNums int32
-// 		retryNum, ok := r.header["retry_nums"]
-// 		if !ok {
-// 			retryNums = 0
-// 		} else {
-// 			retryNums = retryNum.(int32)
-// 		}
-
-// 		retryNums += 1
-
-// 		if retryNums >= r.receive.MaxReTry {
-// 			if r.receive.EventFail != nil {
-// 				r.receive.EventFail(RCODE_RETRY_MAX_ERROR, NewRabbitMqError(RCODE_RETRY_MAX_ERROR, "The maximum number of retries exceeded. Procedure", ""), pushData)
-// 			}
-// 		} else {
-// 			go func(tryNum int32, pushD []byte) {
-// 				time.Sleep(time.Millisecond * 200)
-// 				header := make(map[string]interface{}, 1)
-// 				header["retry_nums"] = tryNum
-// 				expirationTime, errs := RandomAround(r.pool.minRandomRetryTime, r.pool.maxRandomRetryTime)
-// 				if errs != nil {
-// 					expirationTime = 5000
-// 				}
-// 				ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-// 				defer cancel()
-// 				err := r.channel.PublishWithContext(ctx, r.deadExchangeName, r.deadRouteKey, false, false, amqp.Publishing{
-// 					ContentType:  "text/plain",
-// 					Body:         pushD,
-// 					Expiration:   strconv.FormatInt(expirationTime, 10),
-// 					Headers:      r.header,
-// 					DeliveryMode: amqp.Persistent,
-// 				})
-// 				if err != nil {
-// 					if r.receive.EventFail != nil {
-// 						r.receive.EventFail(RCODE_RETRY_MAX_ERROR, NewRabbitMqError(RCODE_RETRY_MAX_ERROR, "The maximum number of retries exceeded. Procedure", ""), pushD)
-// 					}
-// 				}
-
-// 			}(retryNums, pushData)
-
-// 		}
-// 		return nil
-// 	} else {
-// 		return NewRabbitMqError(RCODE_GET_CHANNEL_ERROR, fmt.Sprintf("获取队列 %s 的消费通道失败", r.deadQueueName), fmt.Sprintf("获取队列 %s 的消费通道失败", r.deadQueueName))
-// 	}
-// }
 
 func (r *retryClient) Push(pushData []byte) *RabbitMqError {
 	if r.channel == nil {
@@ -244,53 +197,6 @@ func (r *retryClient) retryMessage(tryNum int32, pushD []byte) {
 	}
 }
 
-// func (r *retryClient) Push(pushData []byte) *RabbitMqError {
-// 	if r.channel != nil {
-// 		var retryNums int32
-// 		retryNum, ok := r.header["retry_nums"]
-// 		if !ok {
-// 			retryNums = 0
-// 		} else {
-// 			retryNums = retryNum.(int32)
-// 		}
-
-// 		retryNums += 1
-
-// 		if retryNums >= r.receive.MaxReTry {
-// 			if r.receive.EventFail != nil {
-// 				r.receive.EventFail(RCODE_RETRY_MAX_ERROR, NewRabbitMqError(RCODE_RETRY_MAX_ERROR, "The maximum number of retries exceeded. Procedure", ""), pushData)
-// 			}
-// 		} else {
-// 			go func(tryNum int32, pushD []byte) {
-// 				time.Sleep(time.Millisecond * 200)
-// 				header := make(map[string]interface{}, 1)
-// 				header["retry_nums"] = tryNum
-// 				expirationTime, errs := RandomAround(r.pool.minRandomRetryTime, r.pool.maxRandomRetryTime)
-// 				if errs != nil {
-// 					expirationTime = 5000
-// 				}
-
-// 				err := r.channel.Publish(r.deadExchangeName, r.deadRouteKey, false, false, amqp.Publishing{
-// 					ContentType:  "text/plain",
-// 					Body:         pushD,
-// 					Expiration:   strconv.FormatInt(expirationTime, 10),
-// 					Headers:      r.header,
-// 					DeliveryMode: amqp.Persistent,
-// 				})
-// 				if err != nil {
-// 					if r.receive.EventFail != nil {
-// 						r.receive.EventFail(RCODE_RETRY_MAX_ERROR, NewRabbitMqError(RCODE_RETRY_MAX_ERROR, "The maximum number of retries exceeded. Procedure", ""), pushD)
-// 					}
-// 				}
-
-// 			}(retryNums, pushData)
-
-// 		}
-// 		return nil
-// 	} else {
-// 		return NewRabbitMqError(RCODE_GET_CHANNEL_ERROR, fmt.Sprintf("获取队列 %s 的消费通道失败", r.deadQueueName), fmt.Sprintf("获取队列 %s 的消费通道失败", r.deadQueueName))
-// 	}
-// }
 
 /*
 错误返回

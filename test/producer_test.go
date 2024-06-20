@@ -10,11 +10,27 @@ import (
 	// "time"
 )
 
+func TestSum(t *testing.T) {
+	s1 := []int{1, 2}
+	s2 := s1
+	s2 = append(s2, 3)
+	sliceRise(s1)
+	sliceRise(s2)
+	fmt.Println(s1, s2)
+	fmt.Printf("s1 type is %T and s2 type is %T",s1,s2)
+}
+func sliceRise(s []int) {
+	s = append(s, 0)
+	for i := range s {
+		s[i]++
+		fmt.Println("i is", s[i])
+	}
+}
 func TestProduct(t *testing.T) {
 	waitall()
 }
 
-var testConf = rabbitmqpool.NewAmqpConf("192.1.1.210", 5672, "root", "root", rabbitmqpool.WithRabbitType(1))
+var testConf = rabbitmqpool.NewAmqpConf("128.199.137.210", 45672, "root", "rabbiT3!", rabbitmqpool.WithRabbitType(1))
 
 func waitall() {
 	var instancePoolProducer *rabbitmqpool.RabbitPool
