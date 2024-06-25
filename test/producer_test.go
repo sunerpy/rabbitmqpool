@@ -1,6 +1,7 @@
 package test
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"sync"
@@ -30,7 +31,7 @@ func TestProduct(t *testing.T) {
 	waitall()
 }
 
-var testConf = rabbitmqpool.NewAmqpConf("128.199.137.210", 45672, "root", "rabbiT3!", rabbitmqpool.WithRabbitType(1))
+var testConf = rabbitmqpool.NewAmqpConf("opsx-rabbitmq-0.opsx-rabbitmq-service", 5672, "root", "rabbiT3!", rabbitmqpool.WithRabbitType(1))
 
 func waitall() {
 	var instancePoolProducer *rabbitmqpool.RabbitPool
@@ -43,19 +44,58 @@ func waitall() {
 		fmt.Println("Here get pool failed...start save to file...")
 		os.Exit(1)
 	}
-	for i := 0; i < 5; i++ {
+	concurrency := 100  // 并发 goroutine 数量
+	numMessages := 100000
+	messageCh := make(chan int, concurrency) // 带缓冲通道限制并发数
+
+	// 创建带取消功能的 context
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	// 启动固定数量的 goroutine 来处理消息发送
+	for i := 0; i < concurrency; i++ {
 		wg.Add(1)
-		go func(num int) {
+		go func() {
 			defer wg.Done()
-			data := rabbitmqpool.GetRabbitMqDataFormat("testChange5", rabbitmqpool.EXCHANGE_TYPE_TOPIC, "textQueue5", "", "这里是数据", localFile)
-			data.Data = fmt.Sprintf("update num is %v", jsonData)
-			err := instancePoolProducer.Push(data)
-			if err != nil {
-				fmt.Printf("err is %v", err)
+			for {
+				select {
+				case num, ok := <-messageCh:
+					if !ok {
+						return
+					}
+					data := rabbitmqpool.GetRabbitMqDataFormat("testChange5", rabbitmqpool.EXCHANGE_TYPE_DIRECT, "textQueue5", "", "这里是数据", localFile)
+					data.Data = fmt.Sprintf("update num is %v", num)
+					err := instancePoolProducer.Push(data)
+					if err != nil {
+						fmt.Printf("err is %v\n", err)
+					}
+				case <-ctx.Done():
+					// 如果 context 被取消，退出 goroutine
+					return
+				}
 			}
-		}(i)
+		}()
 	}
-	wg.Wait()
+		for i := 0; i < numMessages; i++ {
+			select {
+			case messageCh <- i:
+			case <-ctx.Done():
+				// 如果 context 被取消，停止发送消息
+				return
+			}
+		}
+		close(messageCh) // 发送完所有消息后关闭通道
+	// 发送消息数据到 messageCh
+	// go func() {
+	// 	for i := 0; i < numMessages; i++ {
+	// 		select {
+	// 		case messageCh <- i:
+	// 		case <-ctx.Done():
+	// 			// 如果 context 被取消，停止发送消息
+	// 			return
+	// 		}
+	// 	}
+	// 	close(messageCh) // 发送完所有消息后关闭通道
+	// }()
 }
 
 //wg.Add(1)

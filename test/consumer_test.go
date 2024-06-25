@@ -14,17 +14,17 @@ func TestConsume(t *testing.T) {
 func Consume() {
 	var instancePoolConsumer *rabbitmqpool.RabbitPool
 	var err error
-	testConf := rabbitmqpool.NewAmqpConf("192.1.1.210", 5672, "root", "root", rabbitmqpool.WithRabbitType(2))
+	testConf := rabbitmqpool.NewAmqpConf("opsx-rabbitmq-0.opsx-rabbitmq-service", 5672, "root", "rabbiT3!", rabbitmqpool.WithRabbitType(2))
 	instancePoolConsumer, err = rabbitmqpool.InitPool(testConf)
 	if err != nil {
 		fmt.Println("Here get pool failed...start save to file...")
 		return
 	} else {
 		nomrl := &rabbitmqpool.ConsumeReceive{
-			ExchangeName: "testChange32", //队列名称
+			ExchangeName: "testChange5", //队列名称
 			ExchangeType: rabbitmqpool.EXCHANGE_TYPE_DIRECT,
-			Route:        "testRoute32",
-			QueueName:    "testQueue32",
+			Route:        "textQueue5",
+			QueueName:    "textQueue5",
 			IsTry:        true,  //是否重试
 			IsAutoAck:    false, //自动消息确认
 			MaxReTry:     5,     //最大重试次数
