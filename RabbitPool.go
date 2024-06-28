@@ -65,7 +65,6 @@ const (
 
 )
 
-
 type amqpConfig struct {
 	host       string //rabbitmq主机
 	port       int    //端口号
@@ -196,7 +195,6 @@ func (r *retryClient) retryMessage(tryNum int32, pushD []byte) {
 		r.receive.EventFail(RCODE_RETRY_MAX_ERROR, NewRabbitMqError(RCODE_RETRY_MAX_ERROR, "The maximum number of retries exceeded. Procedure", ""), pushD)
 	}
 }
-
 
 /*
 错误返回
@@ -487,26 +485,26 @@ func (r *RabbitPool) getChannelQueueReset(conn *rConn, exChangeName string, exCh
 func InitPool(amqpconfig *amqpConfig) (*RabbitPool, error) {
 	var instancePool *RabbitPool
 	var err error
-	oncePool.Do(func() {
-		//初始化生产者
-		switch amqpconfig.rabbitType {
-		case 1:
-			instancePool = NewProductPool()
-		case 2:
-			instancePool = NewConsumePool()
-		default:
+
+	//初始化生产者
+	switch amqpconfig.rabbitType {
+	case 1:
+		instancePool = NewProductPool()
+	case 2:
+		instancePool = NewConsumePool()
+	default:
+		instancePool = nil
+		fmt.Printf("get conn pool err: %v \n", amqpconfig.rabbitType)
+		err = fmt.Errorf("rabbit type error")
+	}
+	if instancePool != nil {
+		err = instancePool.Connect(amqpconfig)
+		if err != nil {
+			fmt.Println("errs is ", err)
 			instancePool = nil
-			fmt.Printf("get conn pool err: %v \n", amqpconfig.rabbitType)
-			err = fmt.Errorf("rabbit type error")
 		}
-		if instancePool != nil {
-			err = instancePool.Connect(amqpconfig)
-			if err != nil {
-				fmt.Println("errs is ", err)
-				instancePool = nil
-			}
-		}
-	})
+	}
+
 	return instancePool, err
 }
 
