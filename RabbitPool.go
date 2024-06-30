@@ -405,6 +405,47 @@ func (r *RabbitPool) RunConsume() error {
 /*
 发送消息
 */
+
+func (r *RabbitPool) PushWithContext(ctx context.Context, data *RabbitMqData) *RabbitMqError {
+	return rPushWithCtx(ctx, r, data, 1)
+}
+
+func rPushWithCtx(ctx context.Context, pool *RabbitPool, data *RabbitMqData, sendTime int) *RabbitMqError {
+	if sendTime >= pool.pushMaxTime {
+		fmt.Println("//todel debug send failed! start write localdata to file...")
+		writeToLocalFile(data.Data, data.Localfile)
+		return NewRabbitMqError(RCODE_PUSH_MAX_ERROR, "重试超过最大次数", "")
+	}
+
+	pool.channelLock.Lock()
+	defer pool.channelLock.Unlock()
+
+	conn := pool.getConnection()
+	conn, isTry := tryConn(pool, conn, 0, false, data.ExchangeName, data.ExchangeType, data.QueueName, data.Route)
+	rChannels, err := pool.getChannelQueueReset(conn, data.ExchangeName, data.ExchangeType, data.QueueName, data.Route, false, 0, isTry)
+	if err != nil {
+		return NewRabbitMqError(RCODE_GET_CHANNEL_ERROR, "获取信道失败", err.Error())
+	}
+
+	err = rChannels.ch.PublishWithContext(ctx, data.ExchangeName, data.Route, false, false, amqp.Publishing{
+		ContentType:  "text/plain",
+		Body:         []byte(data.Data),
+		DeliveryMode: amqp.Persistent, //持久化到磁盘
+	})
+	if err != nil {
+		if ctx.Err() != nil {
+			// 如果 ctx 被取消或超时，直接返回
+			return NewRabbitMqError(RCODE_CONNECTION_ERROR, "上下文取消或超时", ctx.Err().Error())
+		}
+		// 如果消息发送失败, 重试发送
+		time.Sleep(time.Second * 2)
+		sendTime++
+		return rPushWithCtx(ctx, pool, data, sendTime)
+	}
+
+	return nil
+}
+
 func (r *RabbitPool) Push(data *RabbitMqData) *RabbitMqError {
 	return rPush(r, data, 1)
 }
