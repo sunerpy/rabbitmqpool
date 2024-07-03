@@ -20,7 +20,6 @@ import (
 
 var (
 	ErrFooAckNil = errors.New("ack data nil")
-	oncePool     sync.Once
 )
 
 const (
@@ -391,10 +390,11 @@ func (r *RabbitPool) IsHealthy() bool {
 	}
 	return false
 }
+
 func monitorPool(pool *RabbitPool) {
 	defer func() {
 		if r := recover(); r != nil {
-			fmt.Println("Recovered from panic in monitorPool:", r)
+			fmt.Printf("Recovered from panic in monitorPool: %v\n", r)
 			go monitorPool(pool) // 重启监控 goroutine
 		}
 	}()
@@ -488,14 +488,18 @@ func (r *RabbitPool) Push(data *RabbitMqData) *RabbitMqError {
 */
 //TODO 连接建立失败时,返回异常,避免下标越界
 func (r *RabbitPool) getConnection() *rConn {
-	if len(r.connections) == 0 {
+	r.connectionIndex = r.connectionIndex % int32(r.maxConnection)
+	if len(r.connections[r.clientType]) == 0 {
 		return nil
 	}
-	changeConnectionIndex := r.connectionIndex
+	changeConnectionIndex := atomic.LoadInt32(&r.connectionIndex)
 	currentIndex := r.rabbitLoadBalance.RoundRobin(changeConnectionIndex, r.maxConnection)
 	currentNum := currentIndex - changeConnectionIndex
 	atomic.AddInt32(&r.connectionIndex, currentNum)
-	return r.connections[r.clientType][r.connectionIndex]
+	if currentIndex >= int32(len(r.connections[r.clientType])) {
+		return nil
+	}
+	return r.connections[r.clientType][currentIndex]
 }
 
 /*

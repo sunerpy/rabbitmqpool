@@ -44,10 +44,16 @@ func waitall() {
 		fmt.Println("Here get pool failed...start save to file...")
 		os.Exit(1)
 	}
-	concurrency := 100  // 并发 goroutine 数量
-	numMessages := 100000
+	wg.Add(1)
+	concurrency := 10  // 并发 goroutine 数量
+	numMessages := 100
 	messageCh := make(chan int, concurrency) // 带缓冲通道限制并发数
-
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Println("Recovered from panic in monitorPool:", r)
+			wg.Wait() // 重启监控 goroutine
+		}
+	}()
 	// 创建带取消功能的 context
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -96,6 +102,8 @@ func waitall() {
 	// 	}
 	// 	close(messageCh) // 发送完所有消息后关闭通道
 	// }()
+
+	wg.Wait()
 }
 
 //wg.Add(1)
