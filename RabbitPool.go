@@ -411,6 +411,7 @@ func monitorPool(pool *RabbitPool) {
 		}
 	}
 }
+
 /*
 注册消费接收
 */
@@ -487,6 +488,9 @@ func (r *RabbitPool) Push(data *RabbitMqData) *RabbitMqError {
 */
 //TODO 连接建立失败时,返回异常,避免下标越界
 func (r *RabbitPool) getConnection() *rConn {
+	if len(r.connections) == 0 {
+		return nil
+	}
 	changeConnectionIndex := r.connectionIndex
 	currentIndex := r.rabbitLoadBalance.RoundRobin(changeConnectionIndex, r.maxConnection)
 	currentNum := currentIndex - changeConnectionIndex
