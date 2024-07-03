@@ -381,6 +381,30 @@ func (r *RabbitPool) Connect(amqpconfig *amqpConfig) error {
 	return r.initConnections(false)
 }
 
+func (r *RabbitPool) IsHealthy() bool {
+	rc := r.getConnection()
+	if rc != nil {
+		return true
+	}
+	if rc.conn != nil && !rc.conn.IsClosed(){
+		return true
+	}
+	return false
+}
+func monitorPool(pool *RabbitPool) {
+	for {
+		time.Sleep(30 * time.Second) // 每隔 30 秒检查一次
+		if !pool.IsHealthy() {
+			fmt.Println("Connection pool is unhealthy, reconnecting...")
+			err := pool.initConnections(false)
+			if err != nil {
+				fmt.Println("Failed to reconnect:", err)
+			} else {
+				fmt.Println("Reconnected successfully")
+			}
+		}
+	}
+}
 /*
 注册消费接收
 */
@@ -543,6 +567,9 @@ func InitPool(amqpconfig *amqpConfig) (*RabbitPool, error) {
 		if err != nil {
 			fmt.Println("errs is ", err)
 			instancePool = nil
+		} else {
+			// 启动 goroutine 监测连接池健康状态
+			go monitorPool(instancePool)
 		}
 	}
 
