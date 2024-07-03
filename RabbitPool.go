@@ -383,10 +383,10 @@ func (r *RabbitPool) Connect(amqpconfig *amqpConfig) error {
 
 func (r *RabbitPool) IsHealthy() bool {
 	rc := r.getConnection()
-	if rc != nil {
-		return true
+	if rc == nil {
+		return false
 	}
-	if rc.conn != nil && !rc.conn.IsClosed(){
+	if rc.conn != nil && !rc.conn.IsClosed() {
 		return true
 	}
 	return false
