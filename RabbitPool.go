@@ -392,6 +392,12 @@ func (r *RabbitPool) IsHealthy() bool {
 	return false
 }
 func monitorPool(pool *RabbitPool) {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Println("Recovered from panic in monitorPool:", r)
+			go monitorPool(pool) // 重启监控 goroutine
+		}
+	}()
 	for {
 		time.Sleep(30 * time.Second) // 每隔 30 秒检查一次
 		if !pool.IsHealthy() {
