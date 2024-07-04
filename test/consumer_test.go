@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/sunerpy/rabbitmqpool"
+	"go.uber.org/zap"
 )
 
 func TestConsume(t *testing.T) {
@@ -31,7 +32,7 @@ func Consume() {
 			EventFail: func(code int, e error, data []byte) {
 				fmt.Printf("error:%s", e)
 			},
-			EventSuccess: func(data []byte, header map[string]interface{}, retryClient rabbitmqpool.RetryClientInterface) bool { //如果返回true 则无需重试
+			EventSuccess: func(data []byte, header map[string]interface{}, retryClient rabbitmqpool.RetryClientInterface,sLogger *zap.SugaredLogger) bool { //如果返回true 则无需重试
 				_ = retryClient.Ack()
 				fmt.Printf("data:%s\n", string(data))
 				return true

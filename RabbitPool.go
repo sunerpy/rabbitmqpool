@@ -16,6 +16,7 @@ import (
 	"time"
 
 	amqp "github.com/rabbitmq/amqp091-go"
+	"go.uber.org/zap"
 )
 
 var (
@@ -69,8 +70,9 @@ type amqpConfig struct {
 	port       int    //端口号
 	user       string
 	password   string
-	rabbitType int    //初始化类型,1代表生产者,2为消费者
-	vHost      string //rabbitmq使用的vhost,默认为/
+	rabbitType int                //初始化类型,1代表生产者,2为消费者
+	vHost      string             //rabbitmq使用的vhost,默认为/
+	sLogger    *zap.SugaredLogger //日志
 }
 
 type funcOption func(*amqpConfig)
@@ -87,6 +89,12 @@ func WithRabbitvHost(s string) funcOption {
 func WithRabbitType(i int) funcOption {
 	return func(o *amqpConfig) {
 		o.rabbitType = i
+	}
+}
+
+func WithRabbitLogger(s *zap.SugaredLogger) funcOption {
+	return func(o *amqpConfig) {
+		o.sLogger = s
 	}
 }
 
@@ -220,7 +228,7 @@ type ConsumeReceive struct {
 	ExchangeType string                                                                                  //交换机类型
 	Route        string                                                                                  //路由
 	QueueName    string                                                                                  //队列名称
-	EventSuccess func(data []byte, header map[string]interface{}, retryClient RetryClientInterface) bool //成功事件回调
+	EventSuccess func(data []byte, header map[string]interface{}, retryClient RetryClientInterface,sLogger *zap.SugaredLogger) bool //成功事件回调
 	EventFail    func(int, error, []byte)                                                                //失败回调
 
 	IsTry     bool  //是否重试
@@ -291,6 +299,7 @@ type RabbitPool struct {
 	user        string //用户名
 	password    string //密码
 	virtualHost string // 默认为/
+	sLogger    *zap.SugaredLogger
 }
 
 /*
@@ -377,6 +386,7 @@ func (r *RabbitPool) Connect(amqpconfig *amqpConfig) error {
 	r.user = amqpconfig.user
 	r.password = amqpconfig.password
 	r.virtualHost = amqpconfig.vHost
+	r.sLogger = amqpconfig.sLogger
 	return r.initConnections(false)
 }
 
@@ -918,7 +928,12 @@ func consumeTask(num int32, pool *RabbitPool, receive *ConsumeReceive) {
 			}
 			if receive.EventSuccess != nil {
 				retryClient := newRetryClient(channel, &data, data.Headers, deadExchangeName, deadQueueName, deadRouteKey, pool, receive)
-				isOk := receive.EventSuccess(data.Body, data.Headers, retryClient)
+				var isOk bool
+				if pool.sLogger != nil{
+					isOk = receive.EventSuccess(data.Body, data.Headers, retryClient,pool.sLogger)
+				} else {
+					isOk = receive.EventSuccess(data.Body, data.Headers, retryClient,nil)
+				}
 				if !isOk && receive.IsTry {
 					retryNum, ok := data.Headers["retry_nums"]
 					var retryNums int32

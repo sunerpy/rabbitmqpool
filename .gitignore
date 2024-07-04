@@ -3,3 +3,4 @@ test/config_unmarshal.bak
 test/dev.yaml
 producer.gobak
 cmd/
+test/localdata.txt
