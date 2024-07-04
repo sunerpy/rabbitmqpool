@@ -432,6 +432,21 @@ func (r *RabbitPool) RunConsume() error {
 	rConsume(r)
 	return nil
 }
+func (r *RabbitPool) Close() error {
+	defer func() {
+		if err := recover(); err != nil {
+			fmt.Println("rabbitmq close error:", err)
+		}
+	}()
+	r.connectionLock.Lock()
+	defer r.connectionLock.Unlock()
+	for _, conn := range r.connections {
+		for _, channel := range conn {
+			channel.conn.Close()
+		}
+	}
+	return nil
+}
 
 /*
 发送消息

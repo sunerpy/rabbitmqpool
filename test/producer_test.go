@@ -37,7 +37,7 @@ func waitall() {
 	var instancePoolProducer *rabbitmqpool.RabbitPool
 	var wg sync.WaitGroup
 	var err error
-	go rabbitmqpool.TmpMain()
+	// go rabbitmqpool.TmpMain()
 	localFile := "localdata.txt"
 	instancePoolProducer, err = rabbitmqpool.InitPool(testConf)
 	if err != nil || instancePoolProducer == nil {
@@ -45,8 +45,8 @@ func waitall() {
 		os.Exit(1)
 	}
 	wg.Add(1)
-	concurrency := 10  // 并发 goroutine 数量
-	numMessages := 100
+	concurrency := 100  // 并发 goroutine 数量
+	numMessages := 100000
 	messageCh := make(chan int, concurrency) // 带缓冲通道限制并发数
 	defer func() {
 		if r := recover(); r != nil {

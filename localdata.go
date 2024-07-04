@@ -41,9 +41,7 @@ func TmpMain() {
 
 func readAndSendData(filePath string) {
 	for {
-		fmt.Println("Start reading file:")
 		time.Sleep(30 * time.Second)
-
 		mutex.Lock()
 		data, err := os.ReadFile(filePath)
 		if err != nil {
